@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Enum as SQLEnum
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Enum 
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from datetime import datetime, timezone
 from pydantic import BaseModel
@@ -28,6 +28,7 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
+# Model 
 class TransactionType(str, Enum):
     credit = "credit"
     debit = "debit"
@@ -62,6 +63,12 @@ class TransactionResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class TransactionUpdate(BaseModel):
+    type: TransactionType | None = None
+    amount: float | None = None
+    date: datetime | None = None
+    description: str | None = None
+
 Base.metadata.create_all(bind=engine)
 
 # DB DEPENDENCY
@@ -91,6 +98,51 @@ def create_transaction(data: TransactionCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(txn)
     return txn
+
+# get Transaction by ID
+@app.get("/transactions/{transaction_id}", response_model=TransactionResponse)
+def get_transaction(transaction_id: int, db: Session = Depends(get_db)):
+    txn = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+
+    if not txn:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    return txn
+
+# update transaction 
+@app.put("/transactions/{transaction_id}", response_model=TransactionResponse)
+def update_transaction(
+    transaction_id: int,
+    data: TransactionUpdate,
+    db: Session = Depends(get_db)
+):
+    txn = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+
+    if not txn:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    update_data = data.model_dump(exclude_none=True)
+
+    for key, value in update_data.items():
+        setattr(txn, key, value)
+
+    db.commit()
+    db.refresh(txn)
+
+    return txn
+
+# delete transaction 
+@app.delete("/transactions/{transaction_id}")
+def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
+    txn = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+
+    if not txn:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    db.delete(txn)
+    db.commit()
+
+    return {"message": "Transaction deleted successfully"}
 
 
 # Get all transactions

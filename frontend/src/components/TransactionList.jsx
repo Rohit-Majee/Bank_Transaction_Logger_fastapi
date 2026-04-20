@@ -1,6 +1,12 @@
-export default function TransactionList({ transactions }) {
+import TransactionItem from "./TransactionItem";
+
+export default function TransactionList({ transactions, refresh }) {
+  if (!transactions.length) {
+    return <p>No transactions found</p>;
+  }
+
   return (
-    <table border="1" cellPadding="10">
+    <table className="table">
       <thead>
         <tr>
           <th>ID</th>
@@ -8,17 +14,13 @@ export default function TransactionList({ transactions }) {
           <th>Amount</th>
           <th>Date</th>
           <th>Description</th>
+          <th>Actions</th>
         </tr>
       </thead>
+
       <tbody>
         {transactions.map((txn) => (
-          <tr key={txn.id}>
-            <td>{txn.id}</td>
-            <td>{txn.type}</td>
-            <td>{txn.amount}</td>
-            <td>{new Date(txn.date).toLocaleString()}</td>
-            <td>{txn.description}</td>
-          </tr>
+          <TransactionItem key={txn.id} txn={txn} refresh={refresh} />
         ))}
       </tbody>
     </table>
