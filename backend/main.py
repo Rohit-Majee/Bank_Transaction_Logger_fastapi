@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Enum 
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timezone
 from pydantic import BaseModel
 from enum import Enum
@@ -87,27 +88,37 @@ def home():
 # create transaction 
 @app.post("/transactions", response_model=TransactionResponse)
 def create_transaction(data: TransactionCreate, db: Session = Depends(get_db)):
-    txn_data = data.model_dump(exclude_none=True)
+    try:
+        txn_data = data.model_dump(exclude_none=True)
 
-    if "date" not in txn_data:
-        txn_data["date"] = datetime.now(timezone.utc)
+        if "date" not in txn_data:
+            txn_data["date"] = datetime.now(timezone.utc)
 
-    txn = Transaction(**txn_data)
+        txn = Transaction(**txn_data)
 
-    db.add(txn)
-    db.commit()
-    db.refresh(txn)
-    return txn
+        db.add(txn)
+        db.commit()
+        db.refresh(txn)
+        return txn
+    except SQLAlchemyError as e:
+        db.rollback() 
+        raise HTTPException(status_code=500, detail="Database error occurred while creating the transaction.")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="An unexpected error occurred.")
 
 # get Transaction by ID
 @app.get("/transactions/{transaction_id}", response_model=TransactionResponse)
 def get_transaction(transaction_id: int, db: Session = Depends(get_db)):
-    txn = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    try:
+        txn = db.query(Transaction).filter(Transaction.id == transaction_id).first()
 
-    if not txn:
-        raise HTTPException(status_code=404, detail="Transaction not found")
+        if not txn:
+            raise HTTPException(status_code=404, detail="Transaction not found")
 
-    return txn
+        return txn
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail="Database error occurred while fetching the transaction.")
 
 # update transaction 
 @app.put("/transactions/{transaction_id}", response_model=TransactionResponse)
@@ -116,37 +127,46 @@ def update_transaction(
     data: TransactionUpdate,
     db: Session = Depends(get_db)
 ):
-    txn = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    try:
+        txn = db.query(Transaction).filter(Transaction.id == transaction_id).first()
 
-    if not txn:
-        raise HTTPException(status_code=404, detail="Transaction not found")
+        if not txn:
+            raise HTTPException(status_code=404, detail="Transaction not found")
 
-    update_data = data.model_dump(exclude_none=True)
+        update_data = data.model_dump(exclude_none=True)
 
-    for key, value in update_data.items():
-        setattr(txn, key, value)
+        for key, value in update_data.items():
+            setattr(txn, key, value)
 
-    db.commit()
-    db.refresh(txn)
+        db.commit()
+        db.refresh(txn)
 
-    return txn
+        return txn
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Database error occurred while updating the transaction.")
 
 # delete transaction 
 @app.delete("/transactions/{transaction_id}")
 def delete_transaction(transaction_id: int, db: Session = Depends(get_db)):
-    txn = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+    try:
+        txn = db.query(Transaction).filter(Transaction.id == transaction_id).first()
 
-    if not txn:
-        raise HTTPException(status_code=404, detail="Transaction not found")
+        if not txn:
+            raise HTTPException(status_code=404, detail="Transaction not found")
 
-    db.delete(txn)
-    db.commit()
+        db.delete(txn)
+        db.commit()
 
-    return {"message": "Transaction deleted successfully"}
-
+        return {"message": "Transaction deleted successfully"}
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Database error occurred while deleting the transaction.")
 
 # Get all transactions
 @app.get("/transactions", response_model=list[TransactionResponse])
 def get_transactions(db: Session = Depends(get_db)):
-    return db.query(Transaction).order_by(Transaction.date.desc()).all()
-
+    try:
+        return db.query(Transaction).order_by(Transaction.date.desc()).all()
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail="Database error occurred while fetching transactions.")

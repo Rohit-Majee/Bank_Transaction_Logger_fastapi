@@ -1,47 +1,23 @@
-import { useEffect, useState } from "react";
-import { getTransactions } from "./api";
-import TransactionForm from "./components/TransactionForm";
-import TransactionList from "./components/TransactionList";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Navbar from "./components/Navbar";
+import Dashboard from "./pages/Dashboard";
+import Search from "./pages/Search";
+import Edit from "./pages/Edit";
 import "./App.css";
 
 function App() {
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const res = await getTransactions();
-      setTransactions(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
   return (
-    <div className="container">
-      <h1 className="title">💳 Bank Transaction Logger</h1>
-
-      <div className="card">
-        <TransactionForm refresh={loadData} />
+    <Router>
+      <Navbar />
+      <div className="container">
+        <h1 className="title">💳 Bank Transaction Logger</h1>
+        <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/search" element={<Search />} />
+          <Route path="/edit/:id" element={<Edit />} />
+        </Routes>
       </div>
-
-      <div className="card">
-        <h2>Transactions</h2>
-
-        {loading ? (
-          <p>Loading...</p>
-        ) : (
-          <TransactionList transactions={transactions} refresh={loadData} />
-        )}
-      </div>
-    </div>
+    </Router>
   );
 }
 

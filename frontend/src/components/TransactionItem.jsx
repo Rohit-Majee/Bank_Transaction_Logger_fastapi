@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { deleteTransaction } from "../api";
 
 export default function TransactionItem({ txn, refresh }) {
@@ -13,17 +14,29 @@ export default function TransactionItem({ txn, refresh }) {
   return (
     <tr>
       <td>{txn.id}</td>
-
       <td className={txn.type === "credit" ? "credit" : "debit"}>{txn.type}</td>
-
       <td>₹ {txn.amount}</td>
-
       <td>{txn.date ? new Date(txn.date).toLocaleString() : "—"}</td>
-
       <td>{txn.description || "—"}</td>
-
-      <td>
-        <button className="button" onClick={handleDelete}>
+      <td style={{ display: "flex", gap: "10px" }}>
+        <Link
+          to={`/edit/${txn.id}`}
+          className="button"
+          style={{
+            textDecoration: "none",
+            backgroundColor: "#007bff",
+            color: "white",
+            padding: "5px 10px",
+            borderRadius: "4px",
+          }}
+        >
+          Edit
+        </Link>
+        <button
+          className="button"
+          onClick={handleDelete}
+          style={{ backgroundColor: "#dc3545", color: "white" }}
+        >
           Delete
         </button>
       </td>
