@@ -1,26 +1,26 @@
 import { useState } from "react";
-import { getTransaction } from "../api";
+import { searchTransactionsByDate } from "../api";
 
 export default function Search() {
-  const [searchId, setSearchId] = useState("");
-  const [result, setResult] = useState(null);
+  const [searchDate, setSearchDate] = useState("");
+  const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!searchId) return;
+    if (!searchDate) return;
 
     setLoading(true);
     setError(null);
-    setResult(null);
+    setResults([]); // Clear previous results
 
     try {
-      const res = await getTransaction(searchId);
-      setResult(res.data);
+      const res = await searchTransactionsByDate(searchDate);
+      setResults(res.data);
     } catch (err) {
       if (err.response && err.response.status === 404) {
-        setError("Transaction not found.");
+        setError("No transactions found for this date.");
       } else {
         setError("An error occurred while searching.");
       }
@@ -31,17 +31,16 @@ export default function Search() {
 
   return (
     <div className="card">
-      <h2>Search Transaction</h2>
+      <h2>Search by Date</h2>
       <form
         onSubmit={handleSearch}
         style={{ display: "flex", gap: "10px", marginBottom: "20px" }}
       >
         <input
           className="input"
-          type="number"
-          placeholder="Enter Transaction ID"
-          value={searchId}
-          onChange={(e) => setSearchId(e.target.value)}
+          type="date"
+          value={searchDate}
+          onChange={(e) => setSearchDate(e.target.value)}
           required
         />
         <button className="button" disabled={loading}>
@@ -49,31 +48,33 @@ export default function Search() {
         </button>
       </form>
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p style={{ color: "#ef4444" }}>{error}</p>}
 
-      {result && (
+      {results.length > 0 && (
         <table className="table">
           <thead>
             <tr>
               <th>ID</th>
               <th>Type</th>
               <th>Amount</th>
-              <th>Date</th>
+              <th>Time</th>
               <th>Description</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>{result.id}</td>
-              <td className={result.type === "credit" ? "credit" : "debit"}>
-                {result.type}
-              </td>
-              <td>₹ {result.amount}</td>
-              <td>
-                {result.date ? new Date(result.date).toLocaleString() : "—"}
-              </td>
-              <td>{result.description || "—"}</td>
-            </tr>
+            {results.map((txn) => (
+              <tr key={txn.id}>
+                <td>{txn.id}</td>
+                <td className={txn.type === "credit" ? "credit" : "debit"}>
+                  {txn.type}
+                </td>
+                <td>₹ {txn.amount}</td>
+                <td>
+                  {txn.date ? new Date(txn.date).toLocaleTimeString() : "—"}
+                </td>
+                <td>{txn.description || "—"}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       )}

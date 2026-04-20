@@ -19,3 +19,6 @@ export const updateTransaction = (id, data) =>
 
 // DELETE
 export const deleteTransaction = (id) => API.delete(`/transactions/${id}`);
+
+export const searchTransactionsByDate = (date) =>
+  API.get(`/transactions/search/date?transaction_date=${date}`);

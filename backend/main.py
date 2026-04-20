@@ -1,9 +1,9 @@
-from fastapi import FastAPI, Depends,HTTPException
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Enum 
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Enum, cast, Date # <-- Added cast and Date here
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from sqlalchemy.exc import SQLAlchemyError
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date # <-- Added date here
 from pydantic import BaseModel
 from enum import Enum
 import os
@@ -12,7 +12,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI()
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,7 +51,6 @@ class TransactionCreate(BaseModel):
     amount: float
     date: datetime | None = None
     description: str | None = None
-
 
 class TransactionResponse(BaseModel):
     id: int
@@ -107,7 +105,28 @@ def create_transaction(data: TransactionCreate, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail="An unexpected error occurred.")
 
-# get Transaction by ID
+
+
+# search Transactions by Date
+@app.get("/transactions/search/date", response_model=list[TransactionResponse])
+def search_transactions_by_date(
+    transaction_date: date, 
+    db: Session = Depends(get_db)
+):
+    try:
+        txns = db.query(Transaction).filter(
+            cast(Transaction.date, Date) == transaction_date
+        ).order_by(Transaction.date.desc()).all()
+
+        if not txns:
+            raise HTTPException(status_code=404, detail="No transactions found for this date")
+
+        return txns
+    except SQLAlchemyError as e:
+        raise HTTPException(status_code=500, detail="Database error occurred while searching transactions.")
+
+
+# get Transaction by ID (Kept for the Edit page)
 @app.get("/transactions/{transaction_id}", response_model=TransactionResponse)
 def get_transaction(transaction_id: int, db: Session = Depends(get_db)):
     try:
